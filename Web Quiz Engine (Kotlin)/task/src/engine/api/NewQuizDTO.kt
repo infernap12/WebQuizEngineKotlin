@@ -1,7 +1,6 @@
 package engine.api
 
-data class Quiz(
-    val id: Int,
+class NewQuizDTO(
     val title: String,
     val text: String,
     val options: List<String>,

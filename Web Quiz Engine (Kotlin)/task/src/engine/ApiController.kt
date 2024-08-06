@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController("/api/")
-class ApiController(@Autowired dao: List<Quiz>) {
+class ApiController {
+
+    val memList: List<Quiz> = emptyList<Quiz>().toMutableList()
+
 
     // todo GET /api/quizzes/{id} to get a quiz by its id;
     @GetMapping("/quizzes/{id}")
