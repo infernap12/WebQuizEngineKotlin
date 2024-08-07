@@ -22,8 +22,9 @@ data class Quiz(
     val options: List<String>,
 
     @JsonIgnore
+    @ElementCollection
     @Column(name = "ANSWER")
-    val answer: Int
+    val answer: List<Int>
 ) {
     constructor(newQuizRequest: NewQuizRequest) : this(
         title = newQuizRequest.title,

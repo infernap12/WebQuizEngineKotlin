@@ -1,11 +1,11 @@
 package engine
 
-import engine.api.MyRepository
-import engine.api.NewQuizRequest
-import engine.api.Quiz
-import engine.api.SolveQuizResponse
+import com.fasterxml.jackson.databind.JsonMappingException
+import engine.api.*
+import jakarta.validation.Valid
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.*
 
 @RestController("/api/")
@@ -24,9 +24,9 @@ class ApiController {
 
     // todo POST /api/quizzes/{id}/solve?answer={index} to solve a specific quiz.
     @PostMapping("/api/quizzes/{id}/solve")
-    fun solveQuiz(@RequestParam answer: Int, @PathVariable id: Int): SolveQuizResponse {
+    fun solveQuiz(@RequestBody request: SolveRequest, @PathVariable id: Int): SolveQuizResponse {
         val quiz: Quiz = dao.findById(id).orElseThrow()
-        return if (answer == quiz.answer) {
+        return if (request.answer.toSet() == quiz.answer.toSet()) {
             SolveQuizResponse(true, "Congratulations, you're right!")
         } else {
             SolveQuizResponse(false, "Wrong answer! Please, try again.")
@@ -35,7 +35,7 @@ class ApiController {
 
     // todo POST /api/quizzes to create a new quiz;
     @PostMapping("/api/quizzes")
-    fun createQuiz(@RequestBody quizRequest: NewQuizRequest): Quiz {
+    fun createQuiz(@Valid @RequestBody quizRequest: NewQuizRequest): Quiz {
         return dao.save(Quiz(quizRequest))
     }
 
@@ -46,7 +46,12 @@ class ApiController {
     }
 
     @ExceptionHandler(QuizNotFoundException::class, NoSuchElementException::class)
-    fun handleValidationException(): ResponseEntity<Void> {
+    fun handleNotFoundException(): ResponseEntity<Void> {
         return ResponseEntity.notFound().build()
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException::class, JsonMappingException::class)
+    fun handleValidationException(): ResponseEntity<Void> {
+        return ResponseEntity.badRequest().build()
     }
 }
