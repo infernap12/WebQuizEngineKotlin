@@ -1,50 +1,52 @@
 package engine
 
-import engine.api.GetQuizResponseDTO
-import engine.api.PostQuizResponseDTO
+import engine.api.MyRepository
+import engine.api.NewQuizRequest
 import engine.api.Quiz
+import engine.api.SolveQuizResponse
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
 
 @RestController("/api/")
 class ApiController {
 
-    val memList: List<Quiz> = emptyList<Quiz>().toMutableList()
+    @Autowired
+    lateinit var dao: MyRepository
 
 
     // todo GET /api/quizzes/{id} to get a quiz by its id;
-    @GetMapping("/quizzes/{id}")
-    fun getQuiz(@PathVariable id: Int): GetQuizResponseDTO {
-        return GetQuizResponseDTO(
-            "The Java Logo",
-            "What is depicted on the Java logo?",
-            listOf("Robot", "Tea leaf", "Cup of coffee", "Bug")
-        )
+    @GetMapping("/api/quizzes/{id}")
+    fun getQuiz(@PathVariable id: Int): Quiz {
+        val quiz = dao.findById(id).orElseThrow()
+        return quiz
     }
 
     // todo POST /api/quizzes/{id}/solve?answer={index} to solve a specific quiz.
-    @PostMapping("/quizzes/{id}/solve")
-    fun solveQuiz(@RequestParam answer: Int, @PathVariable id: Int): PostQuizResponseDTO {
-        return if (answer == 2) {
-            PostQuizResponseDTO(true, "Congratulations, you're right!")
+    @PostMapping("/api/quizzes/{id}/solve")
+    fun solveQuiz(@RequestParam answer: Int, @PathVariable id: Int): SolveQuizResponse {
+        val quiz: Quiz = dao.findById(id).orElseThrow()
+        return if (answer == quiz.answer) {
+            SolveQuizResponse(true, "Congratulations, you're right!")
         } else {
-            PostQuizResponseDTO(false, "Wrong answer! Please, try again.")
+            SolveQuizResponse(false, "Wrong answer! Please, try again.")
         }
     }
 
     // todo POST /api/quizzes to create a new quiz;
-    @PostMapping("/quizzes")
-    fun createQuiz() {
-        TODO("create a new quiz")
+    @PostMapping("/api/quizzes")
+    fun createQuiz(@RequestBody quizRequest: NewQuizRequest): Quiz {
+        return dao.save(Quiz(quizRequest))
     }
 
     // todo GET /api/quizzes to get all available quizzes; and
-    @PostMapping("/quizzes")
-    fun getAllQuiz() {
-        TODO("get all quiz")
+    @GetMapping("/api/quizzes")
+    fun getAllQuiz(): List<Quiz> {
+        return dao.findAll()
+    }
+
+    @ExceptionHandler(QuizNotFoundException::class, NoSuchElementException::class)
+    fun handleValidationException(): ResponseEntity<Void> {
+        return ResponseEntity.notFound().build()
     }
 }
