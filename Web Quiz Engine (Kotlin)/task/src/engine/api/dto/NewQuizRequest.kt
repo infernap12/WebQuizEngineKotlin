@@ -1,6 +1,5 @@
-package engine.api
+package engine.api.dto
 
-import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Size
 
