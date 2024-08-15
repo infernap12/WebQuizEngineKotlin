@@ -3,7 +3,7 @@ package engine.api.dto
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Size
 
-
+//use also for put
 class NewQuizRequest(
     @field:NotEmpty
     val title: String,

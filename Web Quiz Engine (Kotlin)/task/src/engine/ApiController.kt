@@ -2,10 +2,7 @@ package engine
 
 import com.fasterxml.jackson.databind.JsonMappingException
 import engine.api.*
-import engine.api.dto.NewQuizRequest
-import engine.api.dto.NewUserRequest
-import engine.api.dto.SolveResponse
-import engine.api.dto.SolveRequest
+import engine.api.dto.*
 import jakarta.validation.Valid
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.actuate.web.exchanges.HttpExchange.Response
@@ -14,9 +11,13 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.*
+import java.awt.SystemColor.text
+import java.net.URI
 import java.net.http.HttpResponse
+import kotlin.jvm.optionals.getOrNull
 
 @RestController("/api/")
 class ApiController {
@@ -41,8 +42,62 @@ class ApiController {
         return HttpStatus.NO_CONTENT
     }
 
+    @PutMapping("/api/quizzes/{id}")
+    fun putQuiz(
+        @PathVariable id: Int,
+        @RequestBody quizRequest: NewQuizRequest,
+        @AuthenticationPrincipal currentUser: UserDetails
+    ): ResponseEntity<Quiz?> {
+        val quiz = quizRepo.findById(id).getOrNull()
+        if (quiz == null) {
+            val newQuiz = Quiz(
+                title = quizRequest.title,
+                text = quizRequest.text,
+                options = quizRequest.options,
+                answer = quizRequest.answer,
+                user = userRepo.findUserByEmail(currentUser.username)!!
+            )
+            val saved = quizRepo.save(newQuiz)
+            /*"/api/quizzes/$id"*/
+            return ResponseEntity.created(URI.create("/api/quizzes/${saved.id}")).body(saved)
+        } else {
+            if (quiz.user.email != currentUser.username) {
+                return ResponseEntity.status(403).build()
+            } else {
+                val updatedQuiz =
+                    Quiz(id, quizRequest.title, quizRequest.text, quizRequest.options, quizRequest.answer, quiz.user)
+                val saved = quizRepo.save(updatedQuiz)
+                return ResponseEntity.ok(saved)
+            }
+        }
+    }
+
+    @PatchMapping("/api/quizzes/{id}")
+    fun patchQuiz(
+        @PathVariable id: Int,
+        @RequestBody req: QuizPatchRequest,
+        @AuthenticationPrincipal currentUser: UserDetails
+    ): ResponseEntity<Void> {
+        val quiz = quizRepo.findById(id).orElseThrow { QuizNotFoundException() }
+        if (quiz.user.email != currentUser.username) {
+            return ResponseEntity.status(403).build()
+        }
+
+        val patchedQuiz = Quiz(
+            id = id,
+            title = req.title ?: quiz.title,
+            text = req.text ?: quiz.text,
+            options = req.options ?: quiz.options,
+            answer = req.answer ?: quiz.answer,
+            user = quiz.user,
+        )
+        quizRepo.save(patchedQuiz)
+        return ResponseEntity.noContent().build()
+
+    }
+
     @PostMapping("/api/register")
-    fun newUser(@RequestBody userReq: NewUserRequest): ResponseEntity<Void> {
+    fun newUser(@Validated @RequestBody userReq: NewUserRequest): ResponseEntity<Void> {
         if (userRepo.existsByEmail(userReq.email)) {
             return ResponseEntity.badRequest().build()
         }

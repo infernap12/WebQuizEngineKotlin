@@ -37,7 +37,7 @@ class SecurityConfig {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
-        http
+        http.rememberMe().disable()
             .httpBasic(Customizer.withDefaults())
             .csrf {
                 it.disable()
@@ -52,6 +52,7 @@ class SecurityConfig {
                 matcherRegistry
                     .requestMatchers(HttpMethod.POST, "/actuator/shutdown").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/register").permitAll()
+                    .requestMatchers("/api/**").authenticated()
                     .requestMatchers("/h2-console/**").permitAll()
                     .anyRequest().denyAll()
             }
