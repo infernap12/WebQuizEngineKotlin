@@ -6,6 +6,8 @@ import engine.api.dto.*
 import jakarta.validation.Valid
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.actuate.web.exchanges.HttpExchange.Response
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*
 import java.awt.SystemColor.text
 import java.net.URI
 import java.net.http.HttpResponse
+import java.util.logging.Logger
 import kotlin.jvm.optionals.getOrNull
 
 @RestController("/api/")
@@ -27,6 +30,9 @@ class ApiController {
 
     @Autowired
     lateinit var userRepo: UserRepository
+
+    @Autowired
+    lateinit var solvedQuizRepo: SolvedQuizRepository
 
     @Autowired
     lateinit var passwordEncoder: PasswordEncoder
@@ -101,6 +107,11 @@ class ApiController {
         if (userRepo.existsByEmail(userReq.email)) {
             return ResponseEntity.badRequest().build()
         }
+        // dumb hyperskill not-real requirement for real address
+        // if an address from a tld wants to use the service, let them
+        if ('.' !in userReq.email.split('@')[1]) {
+            return ResponseEntity.badRequest().build()
+        }
         val user = User(null, userReq.email, passwordEncoder.encode(userReq.password))
         userRepo.save(user)
         return ResponseEntity.ok().build()
@@ -115,14 +126,25 @@ class ApiController {
         return quiz
     }
 
+    @GetMapping("/api/quizzes/completed")
+    fun getCompleted(@RequestParam("page") page: Int, @AuthenticationPrincipal user: User): Page<SolvedQuiz> {
+        return solvedQuizRepo.findAllByUserOrderBySolvedDateDesc(user, PageRequest.of(page, 10))
+    }
+
     /**
      * POST /api/quizzes/{id}/solve?answer={index} to solve a specific quiz.
      * */
     @PostMapping("/api/quizzes/{id}/solve")
-    fun solveQuiz(@RequestBody request: SolveRequest, @PathVariable id: Int): SolveResponse {
+    fun solveQuiz(
+        @RequestBody request: SolveRequest,
+        @PathVariable id: Int,
+        @AuthenticationPrincipal user: User
+    ): SolveResponse {
         val quiz: Quiz = quizRepo.findById(id).orElseThrow { QuizNotFoundException() }
         return if (request.answer.toSet() == quiz.answer.toSet()) {
+            solvedQuizRepo.save(SolvedQuiz(quizId = id, user = user))
             SolveResponse(true, "Congratulations, you're right!")
+
         } else {
             SolveResponse(false, "Wrong answer! Please, try again.")
         }
@@ -152,8 +174,8 @@ class ApiController {
      * GET /api/quizzes to get all available quizzes
      */
     @GetMapping("/api/quizzes")
-    fun getAllQuiz(): List<Quiz> {
-        return quizRepo.findAll()
+    fun getAllQuiz(@RequestParam("page") page: Int): Page<Quiz> {
+        return quizRepo.findAll(PageRequest.of(page, 10))
     }
 
     @ExceptionHandler(QuizNotFoundException::class)

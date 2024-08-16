@@ -48,8 +48,3 @@ tasks.withType(KotlinCompile) {
         jvmTarget = "$hs.kotlin.javaVersion"
     }
 }
-
-test {
-    useJUnitPlatform()
-    systemProperty 'spring.profiles.active', 'test'
-}
