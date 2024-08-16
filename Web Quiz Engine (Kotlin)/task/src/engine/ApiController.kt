@@ -38,14 +38,14 @@ class ApiController {
     lateinit var passwordEncoder: PasswordEncoder
 
     @DeleteMapping("/api/quizzes/{id}")
-    fun deleteQuiz(@PathVariable id: Int, @AuthenticationPrincipal currentUser: UserDetails): HttpStatus {
+    fun deleteQuiz(@PathVariable id: Int, @AuthenticationPrincipal currentUser: UserDetails): ResponseEntity<Void> {
         val quiz = quizRepo.findById(id).orElseThrow { QuizNotFoundException() }
         // todo review whether this is a proper impl
         if (quiz.user.email != currentUser.username) {
-            return HttpStatus.FORBIDDEN
+            return ResponseEntity.status(403).build()
         }
         quizRepo.deleteById(id)
-        return HttpStatus.NO_CONTENT
+        return ResponseEntity.noContent().build()
     }
 
     @PutMapping("/api/quizzes/{id}")
@@ -166,6 +166,7 @@ class ApiController {
             quizRequest.answer,
             userRepo.findUserByEmail(currentUser.username)!!,
         )
+        println(quiz)
 
         return quizRepo.save(quiz)
     }
@@ -186,5 +187,10 @@ class ApiController {
     @ExceptionHandler(MethodArgumentNotValidException::class, JsonMappingException::class)
     fun handleValidationException(): ResponseEntity<Void> {
         return ResponseEntity.badRequest().build()
+    }
+
+    @ExceptionHandler(Exception::class)
+    fun handleException(e: Exception): ResponseEntity<String> {
+        return ResponseEntity.status(400).body(e.cause?.message ?: e.message ?: e.toString())
     }
 }

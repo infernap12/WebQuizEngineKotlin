@@ -11,5 +11,5 @@ class NewQuizRequest(
     val text: String,
     @field:Size(min = 2)
     val options: List<String>,
-    val answer: List<Int>
+    val answer: List<Int> = emptyList()
 )
